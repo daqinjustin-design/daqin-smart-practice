@@ -1,0 +1,18 @@
+{
+  "name": "daqin-smart-practice",
+  "version": "1.0.0",
+  "description": "大钦智能刷题 — 每日模拟练习平台",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.6.2",
+    "bcryptjs": "^2.4.3",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "playwright": "^1.58.2"
+  }
+}
