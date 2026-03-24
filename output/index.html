@@ -373,6 +373,46 @@ body::before {
 .import-icon { font-size: 2.5rem; margin-bottom: 12px; }
 .import-title { font-size: 1rem; font-weight: 600; margin-bottom: 6px; }
 .import-sub { font-size: 0.82rem; color: var(--text-muted); }
+
+/* === Bank Management === */
+.bank-manager { margin-bottom: 48px; }
+.bank-tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid var(--border); }
+.bank-tab { padding: 10px 20px; background: none; border: none; color: var(--text-secondary); font-size: 0.9rem; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all var(--transition); }
+.bank-tab:hover { color: var(--text); }
+.bank-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.bank-upload-area { border: 2px dashed var(--border-strong); border-radius: var(--radius-lg); padding: 32px; text-align: center; cursor: pointer; transition: all var(--transition); margin-bottom: 16px; }
+.bank-upload-area:hover { border-color: var(--accent); background: var(--accent-glow); }
+.bank-upload-area.drag-over { border-color: var(--accent); background: var(--accent-glow); }
+.bank-upload-icon { font-size: 2rem; margin-bottom: 8px; }
+.bank-upload-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; }
+.bank-upload-sub { font-size: 0.78rem; color: var(--text-muted); }
+.bank-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.bank-form-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.bank-form-input { flex: 1; min-width: 200px; padding: 10px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--bg-card); color: var(--text); font-size: 0.9rem; }
+.bank-form-input:focus { outline: none; border-color: var(--accent); }
+.bank-share-toggle { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; user-select: none; }
+.bank-share-toggle input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); }
+.bank-submit-btn { padding: 10px 24px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: opacity var(--transition); }
+.bank-submit-btn:hover { opacity: 0.85; }
+.bank-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.bank-list { display: flex; flex-direction: column; gap: 10px; }
+.bank-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); transition: all var(--transition); }
+.bank-item:hover { border-color: var(--accent); }
+.bank-item-info { flex: 1; min-width: 0; }
+.bank-item-name { font-weight: 600; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bank-item-meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+.bank-item-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.bank-item-btn { padding: 6px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: none; color: var(--text-secondary); font-size: 0.78rem; cursor: pointer; transition: all var(--transition); white-space: nowrap; }
+.bank-item-btn:hover { border-color: var(--accent); color: var(--accent); }
+.bank-item-btn.danger:hover { border-color: var(--red); color: var(--red); }
+.bank-item-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.bank-item-btn.primary:hover { opacity: 0.85; }
+.bank-item-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 600; }
+.bank-item-badge.public { background: rgba(16,185,129,0.15); color: var(--green); }
+.bank-item-badge.private { background: rgba(156,163,175,0.15); color: var(--text-muted); }
+.bank-empty { text-align: center; padding: 40px; color: var(--text-muted); font-size: 0.9rem; }
+.bank-progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 8px; }
+.bank-progress-fill { height: 100%; background: var(--accent); transition: width 0.3s; }
 .import-input { display: none; }
 
 /* === Exam page === */
@@ -2611,7 +2651,7 @@ function renderNav() {
       <button class="nav-btn nav-btn-text" id="btn-import">
         <span>&#8679;</span> 导入题库
       </button>
-      <input type="file" accept=".json,.csv" class="import-input" id="file-input">
+      <input type="file" accept=".json,.csv,.doc,.docx,.pdf" class="import-input" id="file-input">
       <button class="nav-btn" id="btn-theme" title="切换主题">&#9681;</button>
       <button class="nav-btn" id="btn-logout" title="退出登录">&#9211;</button>
     </div>
@@ -2638,6 +2678,316 @@ function handleImport(e) {
   };
   reader.readAsText(file);
   e.target.value = '';
+}
+
+// === BANK MANAGER ===
+let _bankSelectedFile = null;
+
+function wireBankManager() {
+  // Tab switching
+  document.querySelectorAll('[data-bank-tab]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('[data-bank-tab]').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const tabName = tab.dataset.bankTab;
+      if (tabName === 'upload') renderBankUploadTab();
+      else if (tabName === 'mybanks') renderMyBanksTab();
+      else if (tabName === 'public') renderPublicBanksTab();
+    });
+  });
+
+  // Upload zone
+  const zone = document.getElementById('bank-upload-zone');
+  if (zone) {
+    zone.addEventListener('click', () => {
+      const inp = document.createElement('input');
+      inp.type = 'file';
+      inp.accept = '.doc,.docx,.pdf,.json,.csv';
+      inp.onchange = (e) => handleBankFileSelect(e.target.files[0]);
+      inp.click();
+    });
+    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault(); zone.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) handleBankFileSelect(e.dataTransfer.files[0]);
+    });
+  }
+
+  // Submit / cancel
+  document.getElementById('bank-submit-btn')?.addEventListener('click', handleBankSubmit);
+  document.getElementById('bank-cancel-btn')?.addEventListener('click', () => {
+    _bankSelectedFile = null;
+    document.getElementById('bank-upload-form').style.display = 'none';
+    document.getElementById('bank-upload-zone').style.display = '';
+  });
+}
+
+function handleBankFileSelect(file) {
+  if (!file) return;
+  const ext = file.name.toLowerCase();
+  const validExts = ['.doc', '.docx', '.pdf', '.json', '.csv'];
+  if (!validExts.some(e => ext.endsWith(e))) {
+    showToast('不支持的文件格式，请上传 doc/docx/pdf/json/csv 文件');
+    return;
+  }
+  _bankSelectedFile = file;
+  // Auto-fill name from filename
+  const baseName = file.name.replace(/\.[^.]+$/, '');
+  document.getElementById('bank-name-input').value = baseName;
+  document.getElementById('bank-file-info').textContent = '已选择: ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+  document.getElementById('bank-upload-form').style.display = '';
+  document.getElementById('bank-upload-zone').style.display = 'none';
+}
+
+async function handleBankSubmit() {
+  if (!_bankSelectedFile) return;
+  const name = document.getElementById('bank-name-input').value.trim();
+  if (!name) { showToast('请输入题库名称'); return; }
+
+  const isPublic = document.getElementById('bank-public-check').checked;
+  const btn = document.getElementById('bank-submit-btn');
+  const progress = document.getElementById('bank-progress');
+  const progressFill = document.getElementById('bank-progress-fill');
+  btn.disabled = true;
+  btn.textContent = '解析中…';
+  progress.style.display = '';
+  progressFill.style.width = '30%';
+
+  try {
+    const ext = _bankSelectedFile.name.toLowerCase();
+    let result;
+
+    if (ext.endsWith('.json') || ext.endsWith('.csv')) {
+      // Handle JSON/CSV locally first, then send as JSON import
+      const text = await _bankSelectedFile.text();
+      let data;
+      if (ext.endsWith('.csv')) {
+        data = parseCSV(text);
+      } else {
+        data = JSON.parse(text);
+      }
+      if (data.chapters && Array.isArray(data.chapters)) {
+        // Traditional format — load directly and also save as bank
+        progressFill.style.width = '60%';
+        const allQ = [];
+        data.chapters.forEach(ch => {
+          (ch.questions || []).forEach(q => allQ.push(q));
+        });
+        result = await apiCall('POST', '/api/banks/json', {
+          name, questions: allQ, is_public: isPublic
+        });
+        // Also load as active bank
+        loadBank(data);
+        progressFill.style.width = '100%';
+        showToast('题库「' + name + '」导入成功！共 ' + (result.question_count || allQ.length) + ' 题');
+      } else {
+        throw new Error('JSON 格式不正确，需要 chapters 数组');
+      }
+    } else {
+      // Upload doc/docx/pdf to server for parsing
+      progressFill.style.width = '50%';
+      const formData = new FormData();
+      formData.append('file', _bankSelectedFile);
+      formData.append('name', name);
+      formData.append('is_public', isPublic ? '1' : '0');
+
+      const token = getAuthToken();
+      const res = await fetch('/api/banks/upload', {
+        method: 'POST',
+        headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+        body: formData
+      });
+      const resText = await res.text();
+      let resData;
+      try { resData = JSON.parse(resText); } catch(e) { throw new Error('服务器响应异常'); }
+      if (!res.ok) throw new Error(resData.error || '上传失败');
+      result = resData;
+
+      progressFill.style.width = '80%';
+      // Convert parsed questions to chapter format and load
+      if (result.questions && result.questions.length > 0) {
+        const bankData = { chapters: [{ name: name, questions: result.questions }] };
+        loadBank(bankData);
+      }
+      progressFill.style.width = '100%';
+      showToast('题库「' + name + '」导入成功！共 ' + result.question_count + ' 题');
+    }
+
+    _bankSelectedFile = null;
+    document.getElementById('bank-upload-form').style.display = 'none';
+    document.getElementById('bank-upload-zone').style.display = '';
+  } catch(err) {
+    showToast('导入失败：' + (err.message || '未知错误'));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '解析并导入';
+    progress.style.display = 'none';
+    progressFill.style.width = '0%';
+  }
+}
+
+function renderBankUploadTab() {
+  const content = document.getElementById('bank-tab-content');
+  if (!content) return;
+  content.innerHTML = `
+    <div class="bank-upload-area" id="bank-upload-zone">
+      <div class="bank-upload-icon">&#128196;</div>
+      <div class="bank-upload-title">点击或拖拽上传题库文件</div>
+      <div class="bank-upload-sub">支持 .doc / .docx / .pdf / .json / .csv 格式</div>
+    </div>
+    <div class="bank-form" id="bank-upload-form" style="display:none">
+      <div style="font-size:0.85rem;color:var(--text-secondary)" id="bank-file-info"></div>
+      <div class="bank-form-row">
+        <input class="bank-form-input" id="bank-name-input" placeholder="请输入题库名称" maxlength="100">
+      </div>
+      <div class="bank-form-row">
+        <label class="bank-share-toggle"><input type="checkbox" id="bank-public-check"> 公开分享给其他用户</label>
+      </div>
+      <div class="bank-progress-bar" id="bank-progress" style="display:none"><div class="bank-progress-fill" id="bank-progress-fill" style="width:0%"></div></div>
+      <div class="bank-form-row">
+        <button class="bank-submit-btn" id="bank-submit-btn">解析并导入</button>
+        <button class="bank-item-btn" id="bank-cancel-btn">取消</button>
+      </div>
+    </div>`;
+  _bankSelectedFile = null;
+  wireBankUploadZone();
+}
+
+function wireBankUploadZone() {
+  const zone = document.getElementById('bank-upload-zone');
+  if (zone) {
+    zone.addEventListener('click', () => {
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = '.doc,.docx,.pdf,.json,.csv';
+      inp.onchange = (e) => handleBankFileSelect(e.target.files[0]);
+      inp.click();
+    });
+    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault(); zone.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) handleBankFileSelect(e.dataTransfer.files[0]);
+    });
+  }
+  document.getElementById('bank-submit-btn')?.addEventListener('click', handleBankSubmit);
+  document.getElementById('bank-cancel-btn')?.addEventListener('click', () => {
+    _bankSelectedFile = null;
+    document.getElementById('bank-upload-form').style.display = 'none';
+    document.getElementById('bank-upload-zone').style.display = '';
+  });
+}
+
+async function renderMyBanksTab() {
+  const content = document.getElementById('bank-tab-content');
+  if (!content) return;
+  content.innerHTML = '<div class="bank-empty">加载中…</div>';
+  try {
+    const banks = await apiCall('GET', '/api/banks');
+    if (banks.length === 0) {
+      content.innerHTML = '<div class="bank-empty">还没有上传过题库，去"上传导入"添加吧</div>';
+      return;
+    }
+    content.innerHTML = '<div class="bank-list">' + banks.map(b => `
+      <div class="bank-item" data-bank-id="${b.id}">
+        <div class="bank-item-info">
+          <div class="bank-item-name">${escapeHtml(b.name)}</div>
+          <div class="bank-item-meta">${b.question_count} 题 · ${b.created_at ? b.created_at.slice(0, 10) : ''} <span class="bank-item-badge ${b.is_public ? 'public' : 'private'}">${b.is_public ? '公开' : '私有'}</span></div>
+        </div>
+        <div class="bank-item-actions">
+          <button class="bank-item-btn primary" data-bank-use="${b.id}">使用</button>
+          <button class="bank-item-btn" data-bank-toggle="${b.id}" data-currently="${b.is_public}">${b.is_public ? '取消公开' : '公开分享'}</button>
+          <button class="bank-item-btn danger" data-bank-delete="${b.id}">删除</button>
+        </div>
+      </div>
+    `).join('') + '</div>';
+
+    // Bind actions
+    content.querySelectorAll('[data-bank-use]').forEach(btn => {
+      btn.addEventListener('click', () => useBankById(Number(btn.dataset.bankUse)));
+    });
+    content.querySelectorAll('[data-bank-toggle]').forEach(btn => {
+      btn.addEventListener('click', () => toggleBankPublic(Number(btn.dataset.bankToggle), btn.dataset.currently === '1'));
+    });
+    content.querySelectorAll('[data-bank-delete]').forEach(btn => {
+      btn.addEventListener('click', () => deleteBankById(Number(btn.dataset.bankDelete)));
+    });
+  } catch(err) {
+    content.innerHTML = '<div class="bank-empty">获取题库列表失败</div>';
+  }
+}
+
+async function renderPublicBanksTab() {
+  const content = document.getElementById('bank-tab-content');
+  if (!content) return;
+  content.innerHTML = '<div class="bank-empty">加载中…</div>';
+  try {
+    const banks = await apiCall('GET', '/api/banks/public');
+    if (banks.length === 0) {
+      content.innerHTML = '<div class="bank-empty">暂无公共题库，成为第一个分享者吧！</div>';
+      return;
+    }
+    content.innerHTML = '<div class="bank-list">' + banks.map(b => `
+      <div class="bank-item">
+        <div class="bank-item-info">
+          <div class="bank-item-name">${escapeHtml(b.name)}</div>
+          <div class="bank-item-meta">${b.question_count} 题 · ${b.author_email ? b.author_email.replace(/@.*/, '@***') : '匿名'} · ${b.created_at ? b.created_at.slice(0, 10) : ''}</div>
+        </div>
+        <div class="bank-item-actions">
+          <button class="bank-item-btn primary" data-bank-use-public="${b.id}">使用此题库</button>
+        </div>
+      </div>
+    `).join('') + '</div>';
+
+    content.querySelectorAll('[data-bank-use-public]').forEach(btn => {
+      btn.addEventListener('click', () => useBankById(Number(btn.dataset.bankUsePublic)));
+    });
+  } catch(err) {
+    content.innerHTML = '<div class="bank-empty">获取公共题库失败</div>';
+  }
+}
+
+async function useBankById(bankId) {
+  try {
+    showToast('加载题库…');
+    const data = await apiCall('GET', '/api/banks/' + bankId);
+    if (!data.questions || data.questions.length === 0) {
+      showToast('题库为空'); return;
+    }
+    // Convert to chapter format
+    const bankData = { chapters: [{ name: data.name, questions: data.questions }] };
+    loadBank(bankData);
+  } catch(err) {
+    showToast('加载失败：' + (err.message || '未知错误'));
+  }
+}
+
+async function toggleBankPublic(bankId, currentlyPublic) {
+  try {
+    await apiCall('PATCH', '/api/banks/' + bankId, { is_public: !currentlyPublic });
+    showToast(currentlyPublic ? '已取消公开' : '已公开分享');
+    renderMyBanksTab();
+  } catch(err) {
+    showToast('操作失败：' + err.message);
+  }
+}
+
+async function deleteBankById(bankId) {
+  showConfirmDialog('删除题库', '确定要删除这个题库吗？此操作不可撤销。', async () => {
+    try {
+      await apiCall('DELETE', '/api/banks/' + bankId);
+      showToast('已删除');
+      renderMyBanksTab();
+    } catch(err) {
+      showToast('删除失败：' + err.message);
+    }
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
 
 // === DASHBOARD ===
@@ -2759,12 +3109,36 @@ function renderDashboard() {
     </div>`;
   }
 
-  // Import zone
+  // Import / Bank manager zone
   const importHtml = `
-  <div class="import-zone" id="import-zone">
-    <div class="import-icon">&#128218;</div>
-    <div class="import-title">导入自定义题库</div>
-    <div class="import-sub">拖拽或点击上传 JSON / CSV 文件 · 支持单选/多选/判断/填空</div>
+  <div class="bank-manager" id="bank-manager">
+    <div class="section-head"><div class="section-title">&#128218; 题库管理</div></div>
+    <div class="bank-tabs">
+      <button class="bank-tab active" data-bank-tab="upload">上传导入</button>
+      <button class="bank-tab" data-bank-tab="mybanks">我的题库</button>
+      <button class="bank-tab" data-bank-tab="public">公共题库</button>
+    </div>
+    <div id="bank-tab-content">
+      <div class="bank-upload-area" id="bank-upload-zone">
+        <div class="bank-upload-icon">&#128196;</div>
+        <div class="bank-upload-title">点击或拖拽上传题库文件</div>
+        <div class="bank-upload-sub">支持 .doc / .docx / .pdf / .json / .csv 格式</div>
+      </div>
+      <div class="bank-form" id="bank-upload-form" style="display:none">
+        <div style="font-size:0.85rem;color:var(--text-secondary)" id="bank-file-info"></div>
+        <div class="bank-form-row">
+          <input class="bank-form-input" id="bank-name-input" placeholder="请输入题库名称" maxlength="100">
+        </div>
+        <div class="bank-form-row">
+          <label class="bank-share-toggle"><input type="checkbox" id="bank-public-check"> 公开分享给其他用户</label>
+        </div>
+        <div class="bank-progress-bar" id="bank-progress" style="display:none"><div class="bank-progress-fill" id="bank-progress-fill" style="width:0%"></div></div>
+        <div class="bank-form-row">
+          <button class="bank-submit-btn" id="bank-submit-btn">解析并导入</button>
+          <button class="bank-item-btn" id="bank-cancel-btn">取消</button>
+        </div>
+      </div>
+    </div>
   </div>`;
 
   const html = `
@@ -2899,37 +3273,8 @@ function renderDashboard() {
       showChapterHistory(ci);
     });
   });
-  // Bind import zone click
-  document.getElementById('import-zone')?.addEventListener('click', () => {
-    document.getElementById('file-input')?.click();
-  });
-  // Drag and drop
-  const dropZone = document.getElementById('import-zone');
-  if (dropZone) {
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-    dropZone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dropZone.classList.remove('drag-over');
-      const file = e.dataTransfer.files[0];
-      if (file && (file.name.endsWith('.json') || file.name.endsWith('.csv'))) {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          try {
-            let data;
-            if (file.name.endsWith('.csv')) {
-              data = parseCSV(ev.target.result);
-            } else {
-              data = JSON.parse(ev.target.result);
-            }
-            if (!data.chapters || !Array.isArray(data.chapters)) throw new Error('格式不对');
-            loadBank(data);
-          } catch(err) { showToast('导入失败：' + (err.message || '格式不正确')); }
-        };
-        reader.readAsText(file);
-      } else { showToast('请上传 .json 或 .csv 格式的题库文件'); }
-    });
-  }
+  // Bank manager wiring
+  wireBankManager();
   // Random practice
   document.getElementById('btn-random-practice')?.addEventListener('click', startRandomPractice);
   // Custom exam builder

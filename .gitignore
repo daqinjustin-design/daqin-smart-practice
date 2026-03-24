@@ -4,3 +4,6 @@ data.db-wal
 data.db-shm
 .env
 .playwright-cli/
+.claude/
+.mcp.json
+template/

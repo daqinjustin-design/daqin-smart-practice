@@ -39,6 +39,7 @@ app.use('/api', (req, res, next) => {
 // Mount API routes
 app.use('/api', require('./routes/auth')(authLimiter));
 app.use('/api/data', require('./routes/data'));
+app.use('/api/banks', require('./routes/banks'));
 
 // Serve static frontend with no-cache for HTML
 app.use(express.static(path.join(__dirname, 'output'), {
