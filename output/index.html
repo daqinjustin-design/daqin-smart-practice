@@ -2651,7 +2651,7 @@ function renderNav() {
       <button class="nav-btn nav-btn-text" id="btn-import">
         <span>&#8679;</span> 导入题库
       </button>
-      <input type="file" accept=".json,.csv,.doc,.docx,.pdf" class="import-input" id="file-input">
+      <input type="file" accept=".json,.csv,.doc,.docx,.pdf,.txt" class="import-input" id="file-input">
       <button class="nav-btn" id="btn-theme" title="切换主题">&#9681;</button>
       <button class="nav-btn" id="btn-logout" title="退出登录">&#9211;</button>
     </div>
@@ -2702,7 +2702,7 @@ function wireBankManager() {
     zone.addEventListener('click', () => {
       const inp = document.createElement('input');
       inp.type = 'file';
-      inp.accept = '.doc,.docx,.pdf,.json,.csv';
+      inp.accept = '.doc,.docx,.pdf,.txt,.json,.csv';
       inp.onchange = (e) => handleBankFileSelect(e.target.files[0]);
       inp.click();
     });
@@ -2726,9 +2726,9 @@ function wireBankManager() {
 function handleBankFileSelect(file) {
   if (!file) return;
   const ext = file.name.toLowerCase();
-  const validExts = ['.doc', '.docx', '.pdf', '.json', '.csv'];
+  const validExts = ['.doc', '.docx', '.pdf', '.txt', '.json', '.csv'];
   if (!validExts.some(e => ext.endsWith(e))) {
-    showToast('不支持的文件格式，请上传 doc/docx/pdf/json/csv 文件');
+    showToast('不支持的文件格式，请上传 docx/doc/pdf/txt/json/csv 文件');
     return;
   }
   _bankSelectedFile = file;
@@ -3122,7 +3122,7 @@ function renderDashboard() {
       <div class="bank-upload-area" id="bank-upload-zone">
         <div class="bank-upload-icon">&#128196;</div>
         <div class="bank-upload-title">点击或拖拽上传题库文件</div>
-        <div class="bank-upload-sub">支持 .doc / .docx / .pdf / .json / .csv 格式</div>
+        <div class="bank-upload-sub">支持 .docx / .doc / .pdf / .txt / .json / .csv 格式</div>
       </div>
       <div class="bank-form" id="bank-upload-form" style="display:none">
         <div style="font-size:0.85rem;color:var(--text-secondary)" id="bank-file-info"></div>
@@ -4151,39 +4151,83 @@ function showFormatHelp() {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
-  <div class="modal-box" style="max-width:640px">
+  <div class="modal-box" style="max-width:680px">
     <div class="modal-title">
-      <span>&#128196; 题库格式说明</span>
+      <span>&#128196; 题库导入格式说明</span>
       <button class="modal-close">&times;</button>
     </div>
     <div class="import-format-tabs">
-      <div class="import-format-tab active" data-fmt="json">JSON 格式</div>
+      <div class="import-format-tab active" data-fmt="doc">Word / PDF / TXT</div>
+      <div class="import-format-tab" data-fmt="json">JSON 格式</div>
       <div class="import-format-tab" data-fmt="csv">CSV 格式</div>
     </div>
-    <div id="fmt-json">
+    <div id="fmt-doc">
+      <div style="font-size:0.85rem;color:var(--text-secondary);line-height:1.8;margin-bottom:16px">
+        上传 <b>.docx / .doc / .pdf / .txt</b> 文件，系统自动识别题目。<br>
+        请确保文档格式清晰，<b>避免使用表格、特殊排版、自动编号</b>功能。
+      </div>
+      <div style="font-size:0.82rem;font-weight:600;margin-bottom:8px">单选题示例：</div>
+      <pre style="background:var(--bg-input);padding:14px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:0.78rem;line-height:1.7;overflow-x:auto;color:var(--text-secondary);white-space:pre-wrap">1. 以下哪个是中国的首都？
+A. 上海
+B. 北京
+C. 广州
+D. 深圳
+答案：B
+解析：北京是中华人民共和国的首都。
+
+2. HTTP协议的默认端口号是？
+A. 80
+B. 443
+C. 8080
+D. 3000
+答案：A</pre>
+      <div style="font-size:0.82rem;font-weight:600;margin:12px 0 8px">多选题示例：</div>
+      <pre style="background:var(--bg-input);padding:14px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:0.78rem;line-height:1.7;overflow-x:auto;color:var(--text-secondary);white-space:pre-wrap">3. 以下哪些是常见的编程语言？（多选）
+A. Python
+B. Photoshop
+C. Java
+D. C++
+答案：ACD</pre>
+      <div style="font-size:0.82rem;font-weight:600;margin:12px 0 8px">判断题示例：</div>
+      <pre style="background:var(--bg-input);padding:14px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:0.78rem;line-height:1.7;overflow-x:auto;color:var(--text-secondary);white-space:pre-wrap">4. 地球绕太阳公转一周大约需要365天。
+答案：正确
+
+5. 光的速度比声音的速度慢。
+答案：错误</pre>
+      <div style="margin-top:14px;font-size:0.8rem;color:var(--text-muted);line-height:1.7">
+        <b>格式要点：</b><br>
+        &#8226; 题号支持：<code>1.</code> <code>1、</code> <code>(1)</code> <code>第1题</code> <code>一、</code> 等<br>
+        &#8226; 选项支持：<code>A.</code> <code>A、</code> <code>A)</code> <code>A）</code> 等<br>
+        &#8226; 答案支持：<code>答案：B</code> <code>正确答案：ACD</code> <code>【答案】A</code> 等<br>
+        &#8226; 判断答案：<code>正确/错误</code> <code>对/错</code> <code>√/×</code> <code>true/false</code><br>
+        &#8226; 解析支持：<code>解析：...</code> <code>【解析】...</code>（可选）<br>
+        &#8226; 可通过 <b>一、单选题</b> / <b>二、多选题</b> / <b>三、判断题</b> 等章节标题自动识别题型<br>
+        &#8226; 每题之间建议空一行，便于系统准确分隔
+      </div>
+    </div>
+    <div id="fmt-json" style="display:none">
       <pre style="background:var(--bg-input);padding:16px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:0.78rem;line-height:1.6;overflow-x:auto;color:var(--text-secondary);white-space:pre-wrap">{
   "chapters": [
     {
       "name": "章节名称",
       "questions": [
         {
-          "id": "q1",
           "type": "single",
-          "question": "题目内容？",
+          "question": "单选题内容？",
           "options": ["选项A", "选项B", "选项C", "选项D"],
-          "answer": "A",
-          "explanation": "解析内容"
+          "answer": "B",
+          "explanation": "解析内容（可选）"
         },
         {
           "type": "multi",
-          "question": "多选题？",
+          "question": "多选题内容？（多选）",
           "options": ["选项A", "选项B", "选项C"],
           "answer": ["A", "C"],
           "explanation": "解析"
         },
         {
           "type": "tf",
-          "question": "判断题内容？",
+          "question": "判断题内容。",
           "answer": "true",
           "explanation": "解析"
         },
@@ -4197,6 +4241,12 @@ function showFormatHelp() {
     }
   ]
 }</pre>
+      <div style="margin-top:12px;font-size:0.8rem;color:var(--text-muted);line-height:1.7">
+        <b>字段说明：</b><br>
+        &#8226; <code>type</code> — single（单选）/ multi（多选）/ tf（判断）/ fill（填空）<br>
+        &#8226; <code>answer</code> — 单选为字母如 "B"，多选为数组 ["A","C"]，判断为 "true"/"false"<br>
+        &#8226; <code>explanation</code> — 答案解析（可选）
+      </div>
     </div>
     <div id="fmt-csv" style="display:none">
       <pre style="background:var(--bg-input);padding:16px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:0.78rem;line-height:1.6;overflow-x:auto;color:var(--text-secondary);white-space:pre-wrap">chapter,type,question,options,answer,explanation
@@ -4204,21 +4254,16 @@ function showFormatHelp() {
 计算机基础,multi,下列哪些是存储设备？,硬盘;内存;CPU;SSD,A;B;D,硬盘内存SSD是存储设备
 计算机基础,tf,二进制1010等于10,,,true,正确
 计算机基础,fill,HTML的中文含义是____,,超文本标记语言,HTML全称</pre>
-      <div style="margin-top:12px;font-size:0.8rem;color:var(--text-secondary);line-height:1.6">
+      <div style="margin-top:12px;font-size:0.8rem;color:var(--text-muted);line-height:1.7">
         <b>CSV列说明：</b><br>
         &#8226; <code>chapter</code> — 章节名（相同名称归为同一章）<br>
         &#8226; <code>type</code> — single / multi / tf / fill<br>
         &#8226; <code>options</code> — 选项用分号(;)分隔<br>
         &#8226; <code>answer</code> — 多选答案用分号分隔(如 A;C)<br>
-        &#8226; <code>explanation</code> — 答案解析
+        &#8226; <code>explanation</code> — 答案解析（可选）
       </div>
     </div>
     <div style="margin-top:16px;font-size:0.82rem;color:var(--text-secondary);line-height:1.6">
-      <b>type 类型：</b>
-      <code style="color:var(--blue)">single</code> 单选 ·
-      <code style="color:#a78bfa">multi</code> 多选 ·
-      <code style="color:var(--green)">tf</code> 判断 ·
-      <code style="color:var(--yellow)">fill</code> 填空<br>
       <b>建议：</b>每章至少 10 题以上，系统每日从中抽取 10 题组成模拟卷。
     </div>
   </div>`;
@@ -4230,6 +4275,7 @@ function showFormatHelp() {
       overlay.querySelectorAll('.import-format-tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       const fmt = tab.dataset.fmt;
+      overlay.querySelector('#fmt-doc').style.display = fmt === 'doc' ? 'block' : 'none';
       overlay.querySelector('#fmt-json').style.display = fmt === 'json' ? 'block' : 'none';
       overlay.querySelector('#fmt-csv').style.display = fmt === 'csv' ? 'block' : 'none';
     });

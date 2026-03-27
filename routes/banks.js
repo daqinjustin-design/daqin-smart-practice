@@ -20,13 +20,14 @@ const upload = multer({
     const allowed = [
       'application/pdf',
       'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain'
     ];
     const ext = file.originalname.toLowerCase();
-    if (allowed.includes(file.mimetype) || ext.endsWith('.doc') || ext.endsWith('.docx') || ext.endsWith('.pdf')) {
+    if (allowed.includes(file.mimetype) || ext.endsWith('.doc') || ext.endsWith('.docx') || ext.endsWith('.pdf') || ext.endsWith('.txt')) {
       cb(null, true);
     } else {
-      cb(new Error('仅支持 doc、docx、pdf 格式'));
+      cb(new Error('仅支持 doc、docx、pdf、txt 格式'));
     }
   }
 });
@@ -34,6 +35,10 @@ const upload = multer({
 // Extract text from uploaded file buffer
 async function extractText(buffer, mimetype, filename) {
   const ext = filename.toLowerCase();
+
+  if (ext.endsWith('.txt') || mimetype === 'text/plain') {
+    return buffer.toString('utf-8');
+  }
 
   if (ext.endsWith('.pdf') || mimetype === 'application/pdf') {
     const data = await pdfParse(buffer);
@@ -46,7 +51,6 @@ async function extractText(buffer, mimetype, filename) {
   }
 
   if (ext.endsWith('.doc') || mimetype === 'application/msword') {
-    // mammoth can handle some .doc files; try it
     try {
       const result = await mammoth.extractRawText({ buffer });
       return result.value;
@@ -80,8 +84,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     const questions = parseQuestionsRobust(text);
     if (questions.length === 0) {
       return res.status(400).json({
-        error: '未能识别出题目，请检查文件格式。建议格式：\n1. 题目\nA. 选项A\nB. 选项B\n答案：A',
-        extracted_preview: text.substring(0, 500)
+        error: '未能识别出题目。请确保文档中的题目格式清晰，例如：\n\n1. 题目内容\nA. 选项A\nB. 选项B\nC. 选项C\nD. 选项D\n答案：B\n\n常见问题：避免使用表格、特殊排版或自动编号功能。',
+        extracted_preview: text.substring(0, 800)
       });
     }
 
