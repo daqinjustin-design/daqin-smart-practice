@@ -1017,6 +1017,118 @@ body::before {
   font-size: 0.82rem; color: var(--text-secondary);
 }
 
+/* Practice modes grid */
+.practice-modes-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+@media (max-width: 600px) {
+  .practice-modes-grid { grid-template-columns: 1fr; }
+}
+.practice-mode-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  cursor: pointer;
+  transition: all var(--transition);
+  display: flex; align-items: center; gap: 16px;
+}
+.practice-mode-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  border-color: var(--accent);
+}
+.practice-mode-icon {
+  width: 48px; height: 48px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; flex-shrink: 0;
+  color: #fff;
+}
+.practice-mode-title {
+  font-size: 1rem; font-weight: 700;
+  margin-bottom: 4px;
+}
+.practice-mode-desc {
+  font-size: 0.78rem; color: var(--text-secondary); line-height: 1.4;
+}
+
+/* Practice select list in modals */
+.practice-select-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+.practice-select-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.practice-select-item:hover {
+  background: var(--bg-input);
+  border-color: var(--accent);
+}
+.practice-select-name {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+.practice-select-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Bank book group hierarchy */
+.bank-book-group {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.bank-book-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: var(--bg-input);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.bank-book-header:hover {
+  background: var(--border);
+}
+.bank-book-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  flex: 1;
+}
+.bank-book-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.bank-book-arrow {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  transition: transform var(--transition);
+}
+.bank-book-body {
+  padding: 8px 12px;
+}
+.bank-chapter-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 8px 8px 4px;
+  margin-top: 4px;
+}
+
 /* === Drag-over state === */
 .import-zone.drag-over {
   border-color: var(--accent);
@@ -2744,6 +2856,8 @@ async function handleBankSubmit() {
   if (!_bankSelectedFile) return;
   const name = document.getElementById('bank-name-input').value.trim();
   if (!name) { showToast('请输入题库名称'); return; }
+  const bookName = (document.getElementById('bank-book-input')?.value || '').trim();
+  const chapterName = (document.getElementById('bank-chapter-input')?.value || '').trim();
 
   const isPublic = document.getElementById('bank-public-check').checked;
   const btn = document.getElementById('bank-submit-btn');
@@ -2775,7 +2889,7 @@ async function handleBankSubmit() {
           (ch.questions || []).forEach(q => allQ.push(q));
         });
         result = await apiCall('POST', '/api/banks/json', {
-          name, questions: allQ, is_public: isPublic
+          name, questions: allQ, is_public: isPublic, book_name: bookName, chapter_name: chapterName
         });
         // Also load as active bank
         loadBank(data);
@@ -2790,6 +2904,8 @@ async function handleBankSubmit() {
       const formData = new FormData();
       formData.append('file', _bankSelectedFile);
       formData.append('name', name);
+      formData.append('book_name', bookName);
+      formData.append('chapter_name', chapterName);
       formData.append('is_public', isPublic ? '1' : '0');
 
       const token = getAuthToken();
@@ -2834,12 +2950,21 @@ function renderBankUploadTab() {
     <div class="bank-upload-area" id="bank-upload-zone">
       <div class="bank-upload-icon">&#128196;</div>
       <div class="bank-upload-title">点击或拖拽上传题库文件</div>
-      <div class="bank-upload-sub">支持 .doc / .docx / .pdf / .json / .csv 格式</div>
+      <div class="bank-upload-sub">支持 .doc / .docx / .pdf / .txt / .json / .csv 格式</div>
     </div>
     <div class="bank-form" id="bank-upload-form" style="display:none">
       <div style="font-size:0.85rem;color:var(--text-secondary)" id="bank-file-info"></div>
       <div class="bank-form-row">
-        <input class="bank-form-input" id="bank-name-input" placeholder="请输入题库名称" maxlength="100">
+        <input class="bank-form-input" id="bank-book-input" placeholder="所属书籍/考试名称（如：计算机二级考试）" maxlength="100">
+      </div>
+      <div class="bank-form-row">
+        <input class="bank-form-input" id="bank-chapter-input" placeholder="章节名称（如：第一章 计算机基础）可留空" maxlength="100">
+      </div>
+      <div class="bank-form-row">
+        <input class="bank-form-input" id="bank-name-input" placeholder="题库名称（如：计算机基础-单选题）" maxlength="100">
+      </div>
+      <div class="bank-form-row" style="font-size:0.8rem;color:var(--text-muted)">
+        提示：可按书籍+章节分类导入，也可按题型分批导入
       </div>
       <div class="bank-form-row">
         <label class="bank-share-toggle"><input type="checkbox" id="bank-public-check"> 公开分享给其他用户</label>
@@ -2888,32 +3013,130 @@ async function renderMyBanksTab() {
       content.innerHTML = '<div class="bank-empty">还没有上传过题库，去"上传导入"添加吧</div>';
       return;
     }
-    content.innerHTML = '<div class="bank-list">' + banks.map(b => `
-      <div class="bank-item" data-bank-id="${b.id}">
-        <div class="bank-item-info">
-          <div class="bank-item-name">${escapeHtml(b.name)}</div>
-          <div class="bank-item-meta">${b.question_count} 题 · ${b.created_at ? b.created_at.slice(0, 10) : ''} <span class="bank-item-badge ${b.is_public ? 'public' : 'private'}">${b.is_public ? '公开' : '私有'}</span></div>
-        </div>
-        <div class="bank-item-actions">
-          <button class="bank-item-btn primary" data-bank-use="${b.id}">使用</button>
-          <button class="bank-item-btn" data-bank-toggle="${b.id}" data-currently="${b.is_public}">${b.is_public ? '取消公开' : '公开分享'}</button>
-          <button class="bank-item-btn danger" data-bank-delete="${b.id}">删除</button>
-        </div>
-      </div>
-    `).join('') + '</div>';
+
+    // Group by book_name, then chapter_name
+    const grouped = {};
+    const ungrouped = [];
+    banks.forEach(b => {
+      const book = b.book_name || '';
+      if (!book) {
+        ungrouped.push(b);
+      } else {
+        if (!grouped[book]) grouped[book] = {};
+        const ch = b.chapter_name || '未分章节';
+        if (!grouped[book][ch]) grouped[book][ch] = [];
+        grouped[book][ch].push(b);
+      }
+    });
+
+    let html = '';
+    const bookNames = Object.keys(grouped);
+
+    // Render grouped banks
+    bookNames.forEach(bookName => {
+      const chapters = grouped[bookName];
+      const chNames = Object.keys(chapters);
+      const totalQ = chNames.reduce((s, ch) => s + chapters[ch].reduce((s2, b) => s2 + b.question_count, 0), 0);
+      const bankCount = chNames.reduce((s, ch) => s + chapters[ch].length, 0);
+      html += `
+        <div class="bank-book-group">
+          <div class="bank-book-header" data-book-toggle="${escapeHtml(bookName)}">
+            <div class="bank-book-title">&#128218; ${escapeHtml(bookName)}</div>
+            <div class="bank-book-meta">${bankCount} 个题库 · ${totalQ} 题 · ${chNames.length} 个章节</div>
+            <div class="bank-book-arrow">&#9660;</div>
+          </div>
+          <div class="bank-book-body" id="book-body-${bookNames.indexOf(bookName)}">`;
+      chNames.forEach(chName => {
+        if (chNames.length > 1 || chName !== '未分章节') {
+          html += `<div class="bank-chapter-label">&#128195; ${escapeHtml(chName)}</div>`;
+        }
+        chapters[chName].forEach(b => {
+          html += renderBankItem(b);
+        });
+      });
+      html += `</div></div>`;
+    });
+
+    // Render ungrouped banks
+    if (ungrouped.length > 0) {
+      if (bookNames.length > 0) {
+        html += '<div class="bank-chapter-label" style="margin-top:16px">&#128196; 未分类题库</div>';
+      }
+      html += '<div class="bank-list">';
+      ungrouped.forEach(b => { html += renderBankItem(b); });
+      html += '</div>';
+    }
+
+    content.innerHTML = html;
+
+    // Toggle book groups
+    content.querySelectorAll('[data-book-toggle]').forEach(el => {
+      el.addEventListener('click', () => {
+        const body = el.nextElementSibling;
+        const arrow = el.querySelector('.bank-book-arrow');
+        if (body.style.display === 'none') {
+          body.style.display = '';
+          arrow.textContent = '\u25BC';
+        } else {
+          body.style.display = 'none';
+          arrow.textContent = '\u25B6';
+        }
+      });
+    });
 
     // Bind actions
     content.querySelectorAll('[data-bank-use]').forEach(btn => {
       btn.addEventListener('click', () => useBankById(Number(btn.dataset.bankUse)));
     });
     content.querySelectorAll('[data-bank-toggle]').forEach(btn => {
-      btn.addEventListener('click', () => toggleBankPublic(Number(btn.dataset.bankToggle), btn.dataset.currently === '1'));
+      if (btn.dataset.currently !== undefined) {
+        btn.addEventListener('click', () => toggleBankPublic(Number(btn.dataset.bankToggle), btn.dataset.currently === '1'));
+      }
     });
     content.querySelectorAll('[data-bank-delete]').forEach(btn => {
       btn.addEventListener('click', () => deleteBankById(Number(btn.dataset.bankDelete)));
     });
+    // "Use all from this book" buttons
+    content.querySelectorAll('[data-use-book]').forEach(btn => {
+      btn.addEventListener('click', () => useBookBanks(btn.dataset.useBook));
+    });
   } catch(err) {
     content.innerHTML = '<div class="bank-empty">获取题库列表失败</div>';
+  }
+}
+
+function renderBankItem(b) {
+  const labels = [b.book_name, b.chapter_name].filter(x => x).join(' > ');
+  return `
+    <div class="bank-item" data-bank-id="${b.id}">
+      <div class="bank-item-info">
+        <div class="bank-item-name">${escapeHtml(b.name)}</div>
+        <div class="bank-item-meta">${b.question_count} 题 · ${b.created_at ? b.created_at.slice(0, 10) : ''} <span class="bank-item-badge ${b.is_public ? 'public' : 'private'}">${b.is_public ? '公开' : '私有'}</span></div>
+      </div>
+      <div class="bank-item-actions">
+        <button class="bank-item-btn primary" data-bank-use="${b.id}">使用</button>
+        <button class="bank-item-btn" data-bank-toggle="${b.id}" data-currently="${b.is_public}">${b.is_public ? '取消公开' : '公开分享'}</button>
+        <button class="bank-item-btn danger" data-bank-delete="${b.id}">删除</button>
+      </div>
+    </div>`;
+}
+
+async function useBookBanks(bookName) {
+  try {
+    showToast('加载题库…');
+    const banks = await apiCall('GET', '/api/banks');
+    const bookBanks = banks.filter(b => b.book_name === bookName);
+    if (bookBanks.length === 0) { showToast('未找到题库'); return; }
+
+    const chapters = [];
+    for (const b of bookBanks) {
+      const data = await apiCall('GET', '/api/banks/' + b.id);
+      const chName = [b.chapter_name, b.name].filter(x=>x).join(' - ') || b.name;
+      chapters.push({ name: chName, questions: data.questions || [] });
+    }
+    loadBank({ chapters });
+  } catch(err) {
+    showToast('加载失败：' + (err.message || '未知错误'));
   }
 }
 
@@ -3127,7 +3350,16 @@ function renderDashboard() {
       <div class="bank-form" id="bank-upload-form" style="display:none">
         <div style="font-size:0.85rem;color:var(--text-secondary)" id="bank-file-info"></div>
         <div class="bank-form-row">
-          <input class="bank-form-input" id="bank-name-input" placeholder="请输入题库名称" maxlength="100">
+          <input class="bank-form-input" id="bank-book-input" placeholder="所属书籍/考试名称（如：计算机二级考试）" maxlength="100">
+        </div>
+        <div class="bank-form-row">
+          <input class="bank-form-input" id="bank-chapter-input" placeholder="章节名称（如：第一章 计算机基础）可留空" maxlength="100">
+        </div>
+        <div class="bank-form-row">
+          <input class="bank-form-input" id="bank-name-input" placeholder="题库名称（如：计算机基础-单选题）" maxlength="100">
+        </div>
+        <div class="bank-form-row" style="font-size:0.8rem;color:var(--text-muted)">
+          提示：可按书籍+章节分类导入，也可按题型分批导入（如单选题、多选题、判断题分别上传）
         </div>
         <div class="bank-form-row">
           <label class="bank-share-toggle"><input type="checkbox" id="bank-public-check"> 公开分享给其他用户</label>
@@ -3185,23 +3417,39 @@ function renderDashboard() {
       </div>
     </div>
 
-    <div class="random-practice-card fade-up fade-up-3" id="btn-random-practice">
-      <div class="random-practice-icon">&#127922;</div>
-      <div class="random-practice-info">
-        <div class="random-practice-title">随机练习模式</div>
-        <div class="random-practice-sub">从所有章节中随机抽取题目，不限每日次数，随时刷题提升</div>
+    <div class="practice-modes-grid fade-up fade-up-3">
+      <div class="practice-mode-card" id="btn-chapter-practice">
+        <div class="practice-mode-icon" style="background:linear-gradient(135deg,#10b981,#059669)">&#128213;</div>
+        <div class="practice-mode-info">
+          <div class="practice-mode-title">章节练习</div>
+          <div class="practice-mode-desc">按导入的章节逐章练习，针对性强</div>
+        </div>
       </div>
-    </div>
-
-    <div class="random-practice-card fade-up fade-up-3" id="btn-custom-builder" style="border-color:var(--blue)">
-      <div class="random-practice-icon" style="background:linear-gradient(135deg, var(--blue), #6366f1);box-shadow:0 4px 16px rgba(59,130,246,0.3)">&#128736;</div>
-      <div class="random-practice-info">
-        <div class="random-practice-title">自定义组卷</div>
-        <div class="random-practice-sub">选择章节、题数、仅收藏或仅错题，创建个性化练习</div>
+      <div class="practice-mode-card" id="btn-type-practice">
+        <div class="practice-mode-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706)">&#128221;</div>
+        <div class="practice-mode-info">
+          <div class="practice-mode-title">题型练习</div>
+          <div class="practice-mode-desc">按单选/多选/判断题型分类专项突破</div>
+        </div>
+      </div>
+      <div class="practice-mode-card" id="btn-random-practice">
+        <div class="practice-mode-icon" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed)">&#127922;</div>
+        <div class="practice-mode-info">
+          <div class="practice-mode-title">随机练习</div>
+          <div class="practice-mode-desc">从所有题目中随机抽取，不限次数</div>
+        </div>
+      </div>
+      <div class="practice-mode-card" id="btn-mock-exam">
+        <div class="practice-mode-icon" style="background:linear-gradient(135deg,#ef4444,#dc2626)">&#127919;</div>
+        <div class="practice-mode-info">
+          <div class="practice-mode-title">模拟考试</div>
+          <div class="practice-mode-desc">40单选(1分)+20多选(1.5分)+30判断(1分) 共100分</div>
+        </div>
       </div>
     </div>
 
     <div style="display:flex;gap:12px;margin-bottom:28px;flex-wrap:wrap" class="fade-up fade-up-3">
+      <button class="btn btn-sm" id="btn-custom-builder" style="flex:1;justify-content:center">&#128736; 自定义组卷</button>
       <button class="btn btn-sm" id="btn-go-analytics" style="flex:1;justify-content:center">&#128200; 学习分析</button>
       <button class="btn btn-sm" id="btn-go-explorer" style="flex:1;justify-content:center">&#128218; 题库浏览 (${bank.chapters.reduce((s,c)=>s+c.questions.length,0)} 题)</button>
       <button class="btn btn-sm" id="btn-go-achievements" style="flex:1;justify-content:center">&#127942; 成就 (${getUnlockedAchievements().length}/${ACHIEVEMENTS.length})</button>
@@ -3249,7 +3497,7 @@ function renderDashboard() {
 
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:32px">
       <button class="btn btn-sm" id="btn-export-results">&#128190; 导出练习记录</button>
-      <button class="btn btn-sm" id="btn-show-format">&#128196; 题库JSON格式说明</button>
+      <button class="btn btn-sm" id="btn-show-format">&#128196; 题库导入格式说明</button>
       <button class="btn btn-sm" id="btn-settings">&#9881; 设置</button>
       <button class="btn btn-sm" id="btn-reset-data" style="color:var(--red);border-color:var(--red)">&#128465; 清除所有数据</button>
     </div>
@@ -3275,8 +3523,11 @@ function renderDashboard() {
   });
   // Bank manager wiring
   wireBankManager();
-  // Random practice
+  // Practice mode buttons
+  document.getElementById('btn-chapter-practice')?.addEventListener('click', showChapterPracticeSelect);
+  document.getElementById('btn-type-practice')?.addEventListener('click', showTypePracticeSelect);
   document.getElementById('btn-random-practice')?.addEventListener('click', startRandomPractice);
+  document.getElementById('btn-mock-exam')?.addEventListener('click', startMockExam);
   // Custom exam builder
   document.getElementById('btn-custom-builder')?.addEventListener('click', showCustomExamBuilder);
   // Quick-access buttons
@@ -3364,8 +3615,10 @@ function renderExam() {
   const isCustomBuilder = APP.currentChapter === -3;
   const isBookmarkPractice = APP.currentChapter === -4;
   const isWeakPractice = APP.currentChapter === -5;
-  const chName = isRandom ? '随机练习' : isWrongPractice ? '错题重练' : isCustomBuilder ? '自定义组卷' : isBookmarkPractice ? '收藏练习' : isWeakPractice ? '针对性练习' : (APP.bank.chapters[APP.currentChapter] ? APP.bank.chapters[APP.currentChapter].name : '练习');
-  const chLabel = isRandom ? 'RANDOM MODE' : isWrongPractice ? 'WRONG BOOK' : isCustomBuilder ? 'CUSTOM EXAM' : isBookmarkPractice ? 'BOOKMARK MODE' : isWeakPractice ? 'WEAK TOPICS' : `Chapter ${String(APP.currentChapter+1).padStart(2,'0')} · Day ${getDayOfCycle()+1}/30`;
+  const isTypePractice = APP.currentChapter === -6;
+  const isMockExam = APP.currentChapter === -7;
+  const chName = isMockExam ? '模拟考试' : isTypePractice ? (APP.typePracticeLabel || '题型练习') : isRandom ? '随机练习' : isWrongPractice ? '错题重练' : isCustomBuilder ? '自定义组卷' : isBookmarkPractice ? '收藏练习' : isWeakPractice ? '针对性练习' : (APP.bank.chapters[APP.currentChapter] ? APP.bank.chapters[APP.currentChapter].name : '练习');
+  const chLabel = isMockExam ? 'MOCK EXAM' : isTypePractice ? 'TYPE PRACTICE' : isRandom ? 'RANDOM MODE' : isWrongPractice ? 'WRONG BOOK' : isCustomBuilder ? 'CUSTOM EXAM' : isBookmarkPractice ? 'BOOKMARK MODE' : isWeakPractice ? 'WEAK TOPICS' : `Chapter ${String(APP.currentChapter+1).padStart(2,'0')} · Day ${getDayOfCycle()+1}/30`;
   const q = questions[APP.currentQ];
   if (!q) { renderDashboard(); return; }
   const idx = APP.currentQ;
@@ -3769,7 +4022,29 @@ function renderResults(filter) {
   const isCustomBuilder = APP.currentChapter === -3;
   const isBookmarkPractice = APP.currentChapter === -4;
   const isWeakPractice = APP.currentChapter === -5;
-  const chName = isRandom ? '随机练习' : isWrongPractice ? '错题重练' : isCustomBuilder ? '自定义组卷' : isBookmarkPractice ? '收藏练习' : isWeakPractice ? '针对性练习' : (APP.bank.chapters[APP.currentChapter] ? APP.bank.chapters[APP.currentChapter].name : '练习');
+  const isTypePracticeR = APP.currentChapter === -6;
+  const isMockExamR = APP.currentChapter === -7;
+  const chName = isMockExamR ? '模拟考试' : isTypePracticeR ? (APP.typePracticeLabel || '题型练习') : isRandom ? '随机练习' : isWrongPractice ? '错题重练' : isCustomBuilder ? '自定义组卷' : isBookmarkPractice ? '收藏练习' : isWeakPractice ? '针对性练习' : (APP.bank.chapters[APP.currentChapter] ? APP.bank.chapters[APP.currentChapter].name : '练习');
+
+  // Mock exam scoring
+  let mockScoreHtml = '';
+  if (isMockExamR && APP.mockExamInfo) {
+    let mockPoints = 0;
+    questions.forEach((q, i) => {
+      if (isCorrect(i)) mockPoints += (q._mockScore || 1);
+    });
+    const mi = APP.mockExamInfo;
+    const passed = mockPoints >= 60;
+    mockScoreHtml = `
+    <div style="text-align:center;margin:20px 0;padding:20px;background:var(--bg-card);border-radius:var(--radius-lg);border:2px solid ${passed ? 'var(--green)' : 'var(--red)'}">
+      <div style="font-size:2rem;font-weight:800;color:${passed ? 'var(--green)' : 'var(--red)'}">${mockPoints.toFixed(1)} / ${mi.totalPoints.toFixed(1)} 分</div>
+      <div style="font-size:1.1rem;font-weight:600;margin:8px 0;color:${passed ? 'var(--green)' : 'var(--red)'}">${passed ? '&#127881; 恭喜通过！' : '&#128546; 未通过（60分及格）'}</div>
+      <div style="font-size:0.82rem;color:var(--text-secondary);margin-top:12px;line-height:1.8">
+        单选题：${mi.singleCount} 题 x 1分 | 多选题：${mi.multiCount} 题 x 1.5分 | 判断题：${mi.tfCount} 题 x 1分<br>
+        用时：${formatTime(APP.elapsed)} | 正确率：${pct}%
+      </div>
+    </div>`;
+  }
 
   // Score ring colors
   const ringColor = pct >= 80 ? 'var(--green)' : pct >= 60 ? 'var(--yellow)' : 'var(--red)';
@@ -3838,7 +4113,8 @@ function renderResults(filter) {
           <div class="score-ring-label">${score} / ${total}</div>
         </div>
       </div>
-      <div class="result-label">${escHtml(chName)} · ${isRandom || isWrongPractice || isCustomBuilder || isBookmarkPractice || isWeakPractice ? '本次练习' : '第 ' + (getDayOfCycle()+1) + ' 天练习'}</div>
+      <div class="result-label">${escHtml(chName)} · ${isRandom || isWrongPractice || isCustomBuilder || isBookmarkPractice || isWeakPractice || isTypePracticeR || isMockExamR ? '本次练习' : '第 ' + (getDayOfCycle()+1) + ' 天练习'}</div>
+      ${mockScoreHtml}
       <div class="result-stats">
         <div class="result-stat">
           <div class="result-stat-val" style="color:var(--green)">${score}</div>
@@ -3914,6 +4190,194 @@ function renderResults(filter) {
   });
 }
 
+// === CHAPTER PRACTICE SELECT ===
+function showChapterPracticeSelect() {
+  const bank = APP.bank;
+  if (!bank || !bank.chapters || bank.chapters.length === 0) {
+    showToast('请先导入题库');
+    return;
+  }
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  let chapListHtml = bank.chapters.map((ch, ci) => {
+    return `<div class="practice-select-item" data-ch="${ci}">
+      <div class="practice-select-name">${escHtml(ch.name)}</div>
+      <div class="practice-select-meta">${ch.questions.length} 题</div>
+    </div>`;
+  }).join('');
+  overlay.innerHTML = `
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-title">
+      <span>&#128213; 选择章节练习</span>
+      <button class="modal-close">&times;</button>
+    </div>
+    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:16px">点击选择要练习的章节</div>
+    <div class="practice-select-list">${chapListHtml}</div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelectorAll('.practice-select-item').forEach(el => {
+    el.addEventListener('click', () => {
+      overlay.remove();
+      showExamModeSelect(parseInt(el.dataset.ch));
+    });
+  });
+}
+
+// === TYPE PRACTICE SELECT ===
+function showTypePracticeSelect() {
+  const bank = APP.bank;
+  if (!bank || !bank.chapters || bank.chapters.length === 0) {
+    showToast('请先导入题库');
+    return;
+  }
+  // Collect all questions by type
+  const byType = { single: [], multi: [], tf: [], fill: [] };
+  bank.chapters.forEach((ch, ci) => {
+    ch.questions.forEach(q => {
+      const t = q.type || 'single';
+      if (byType[t]) byType[t].push({...q, _chapterName: ch.name, _chapterIdx: ci});
+    });
+  });
+  const typeLabels = { single: '单选题', multi: '多选题', tf: '判断题', fill: '填空题' };
+  const typeIcons = { single: '&#9312;', multi: '&#9313;', tf: '&#9314;', fill: '&#9315;' };
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  let typeListHtml = Object.keys(byType).filter(t => byType[t].length > 0).map(t => {
+    return `<div class="practice-select-item" data-type="${t}">
+      <div class="practice-select-name">${typeIcons[t]} ${typeLabels[t]}</div>
+      <div class="practice-select-meta">${byType[t].length} 题</div>
+    </div>`;
+  }).join('');
+  if (!typeListHtml) {
+    typeListHtml = '<div class="bank-empty">题库中没有可用题目</div>';
+  }
+  overlay.innerHTML = `
+  <div class="modal-box" style="max-width:460px">
+    <div class="modal-title">
+      <span>&#128221; 按题型练习</span>
+      <button class="modal-close">&times;</button>
+    </div>
+    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:16px">选择题型进行专项练习</div>
+    <div class="practice-select-list">${typeListHtml}</div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelectorAll('.practice-select-item').forEach(el => {
+    el.addEventListener('click', () => {
+      overlay.remove();
+      startTypePractice(el.dataset.type);
+    });
+  });
+}
+
+function startTypePractice(qType) {
+  const bank = APP.bank;
+  const typeLabels = { single: '单选题', multi: '多选题', tf: '判断题', fill: '填空题' };
+  const questions = [];
+  bank.chapters.forEach((ch, ci) => {
+    ch.questions.forEach(q => {
+      if ((q.type || 'single') === qType) {
+        questions.push({...q, _chapterName: ch.name, _chapterIdx: ci});
+      }
+    });
+  });
+  if (questions.length < 2) {
+    showToast((typeLabels[qType] || qType) + '数量不足，请先导入更多题目');
+    return;
+  }
+  // Shuffle
+  for (let i = questions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [questions[i], questions[j]] = [questions[j], questions[i]];
+  }
+  const qCount = getSetting('randomQCount', 10);
+  APP.currentChapter = -6; // type practice marker
+  APP.typePracticeLabel = typeLabels[qType] || qType;
+  APP.dailyQuestions = questions.slice(0, Math.min(qCount, questions.length));
+  APP.currentQ = 0;
+  APP.answers = {};
+  APP.flags = new Set();
+  APP.submitted = false;
+  APP.currentView = 'exam';
+  APP.elapsed = 0;
+  APP.isRandomMode = false;
+  APP.timedMode = false;
+  startTimer();
+  renderExam();
+}
+
+// === MOCK EXAM ===
+function startMockExam() {
+  const bank = APP.bank;
+  if (!bank || !bank.chapters || bank.chapters.length === 0) {
+    showToast('请先导入题库');
+    return;
+  }
+  // Collect all questions by type
+  const singles = [], multis = [], tfs = [];
+  bank.chapters.forEach((ch, ci) => {
+    ch.questions.forEach(q => {
+      const t = q.type || 'single';
+      const qq = {...q, _chapterName: ch.name, _chapterIdx: ci};
+      if (t === 'single') singles.push(qq);
+      else if (t === 'multi') multis.push(qq);
+      else if (t === 'tf') tfs.push(qq);
+    });
+  });
+
+  // Shuffle each pool
+  [singles, multis, tfs].forEach(arr => {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+  });
+
+  // Target: 40 single, 20 multi, 30 tf
+  const mockSingle = singles.slice(0, 40);
+  const mockMulti = multis.slice(0, 20);
+  const mockTf = tfs.slice(0, 30);
+
+  const allQ = [...mockSingle, ...mockMulti, ...mockTf];
+  if (allQ.length < 10) {
+    showToast('题库题目不足以组成模拟考试，需要更多单选/多选/判断题');
+    return;
+  }
+
+  // Tag each question with its score for mock exam scoring
+  mockSingle.forEach(q => q._mockScore = 1);
+  mockMulti.forEach(q => q._mockScore = 1.5);
+  mockTf.forEach(q => q._mockScore = 1);
+
+  const totalPoints = mockSingle.length * 1 + mockMulti.length * 1.5 + mockTf.length * 1;
+
+  APP.currentChapter = -7; // mock exam marker
+  APP.mockExamInfo = {
+    singleCount: mockSingle.length,
+    multiCount: mockMulti.length,
+    tfCount: mockTf.length,
+    totalPoints: totalPoints
+  };
+  APP.dailyQuestions = allQ;
+  APP.currentQ = 0;
+  APP.answers = {};
+  APP.flags = new Set();
+  APP.submitted = false;
+  APP.currentView = 'exam';
+  APP.elapsed = 0;
+  APP.isRandomMode = false;
+  APP.timedMode = true;
+  // Mock exam time: 90 minutes
+  APP.timeLimit = 90 * 60;
+  APP.timeRemaining = 90 * 60;
+  startTimer();
+  startCountdownTimer();
+  renderExam();
+}
+
 // === RANDOM PRACTICE ===
 function startRandomPractice() {
   const bank = APP.bank;
@@ -3952,7 +4416,7 @@ function saveWrongAnswers() {
   if (!data.wrongBook) data.wrongBook = [];
   const date = new Date().toISOString().slice(0,10);
   const ch = APP.currentChapter >= 0 ? APP.bank.chapters[APP.currentChapter] : null;
-  const chName = ch ? ch.name : (APP.currentChapter === -1 ? '随机练习' : APP.currentChapter === -2 ? '错题重练' : APP.currentChapter === -3 ? '自定义组卷' : APP.currentChapter === -4 ? '收藏练习' : APP.currentChapter === -5 ? '针对性练习' : '练习');
+  const chName = ch ? ch.name : (APP.currentChapter === -1 ? '随机练习' : APP.currentChapter === -2 ? '错题重练' : APP.currentChapter === -3 ? '自定义组卷' : APP.currentChapter === -4 ? '收藏练习' : APP.currentChapter === -5 ? '针对性练习' : APP.currentChapter === -6 ? (APP.typePracticeLabel || '题型练习') : APP.currentChapter === -7 ? '模拟考试' : '练习');
   APP.dailyQuestions.forEach((q, i) => {
     if (!isCorrect(i)) {
       const userAns = APP.answers[i];
@@ -5795,7 +6259,9 @@ function generateShareCard() {
   const isCustomBuilder = APP.currentChapter === -3;
   const isBookmarkPractice = APP.currentChapter === -4;
   const isWeakPractice = APP.currentChapter === -5;
-  const chName = isRandom ? '随机练习' : isWrongPractice ? '错题重练' : isCustomBuilder ? '自定义组卷' : isBookmarkPractice ? '收藏练习' : isWeakPractice ? '针对性练习' : APP.bank.chapters[APP.currentChapter].name;
+  const isTypePractice2 = APP.currentChapter === -6;
+  const isMockExam2 = APP.currentChapter === -7;
+  const chName = isMockExam2 ? '模拟考试' : isTypePractice2 ? (APP.typePracticeLabel || '题型练习') : isRandom ? '随机练习' : isWrongPractice ? '错题重练' : isCustomBuilder ? '自定义组卷' : isBookmarkPractice ? '收藏练习' : isWeakPractice ? '针对性练习' : APP.bank.chapters[APP.currentChapter]?.name || '练习';
   const dateStr = new Date().toISOString().slice(0, 10);
 
   const canvas = document.createElement('canvas');

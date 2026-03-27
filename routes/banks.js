@@ -90,7 +90,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     }
 
     const isPublic = req.body.is_public === '1' || req.body.is_public === 'true' ? 1 : 0;
-    const bank = await createBank(req.userId, bankName, questions, req.file.originalname);
+    const bookName = (req.body.book_name || '').trim();
+    const chapterName = (req.body.chapter_name || '').trim();
+    const bank = await createBank(req.userId, bankName, questions, req.file.originalname, bookName, chapterName);
 
     if (isPublic) {
       await updateBankVisibility(bank.id, req.userId, true);
@@ -115,7 +117,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 // POST /api/banks/json — import from JSON (existing functionality, now with naming)
 router.post('/json', async (req, res) => {
   try {
-    const { name, questions, is_public } = req.body;
+    const { name, questions, is_public, book_name, chapter_name } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: '请输入题库名称' });
     }
@@ -123,7 +125,7 @@ router.post('/json', async (req, res) => {
       return res.status(400).json({ error: '题目列表为空' });
     }
 
-    const bank = await createBank(req.userId, name.trim(), questions, null);
+    const bank = await createBank(req.userId, name.trim(), questions, null, book_name, chapter_name);
     if (is_public) {
       await updateBankVisibility(bank.id, req.userId, true);
     }
@@ -171,6 +173,8 @@ router.get('/:id', async (req, res) => {
     res.json({
       id: bank.id,
       name: bank.name,
+      book_name: bank.book_name || '',
+      chapter_name: bank.chapter_name || '',
       is_public: bank.is_public,
       question_count: bank.question_count,
       questions,

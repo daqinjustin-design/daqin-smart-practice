@@ -29,6 +29,8 @@ async function initDB() {
       id              INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id         INTEGER NOT NULL,
       name            TEXT    NOT NULL,
+      book_name       TEXT    DEFAULT '',
+      chapter_name    TEXT    DEFAULT '',
       is_public       INTEGER DEFAULT 0,
       questions       TEXT    NOT NULL DEFAULT '[]',
       question_count  INTEGER DEFAULT 0,
@@ -37,6 +39,14 @@ async function initDB() {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
+
+  // Migration: add book_name and chapter_name columns if missing
+  try {
+    await db.execute({ sql: "ALTER TABLE question_banks ADD COLUMN book_name TEXT DEFAULT ''", args: [] });
+  } catch(e) { /* column already exists */ }
+  try {
+    await db.execute({ sql: "ALTER TABLE question_banks ADD COLUMN chapter_name TEXT DEFAULT ''", args: [] });
+  } catch(e) { /* column already exists */ }
 }
 
 const ALLOWED_KEYS = [
@@ -101,17 +111,17 @@ async function deleteAllUserData(userId) {
 
 // ── Question Bank functions ──
 
-async function createBank(userId, name, questions, sourceFilename) {
+async function createBank(userId, name, questions, sourceFilename, bookName, chapterName) {
   const result = await db.execute({
-    sql: 'INSERT INTO question_banks (user_id, name, questions, question_count, source_filename) VALUES (?, ?, ?, ?, ?)',
-    args: [userId, name, JSON.stringify(questions), questions.length, sourceFilename || null]
+    sql: 'INSERT INTO question_banks (user_id, name, book_name, chapter_name, questions, question_count, source_filename) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    args: [userId, name, bookName || '', chapterName || '', JSON.stringify(questions), questions.length, sourceFilename || null]
   });
   return { id: Number(result.lastInsertRowid), name, question_count: questions.length };
 }
 
 async function getUserBanks(userId) {
   const result = await db.execute({
-    sql: 'SELECT id, name, is_public, question_count, source_filename, created_at FROM question_banks WHERE user_id = ? ORDER BY created_at DESC',
+    sql: 'SELECT id, name, book_name, chapter_name, is_public, question_count, source_filename, created_at FROM question_banks WHERE user_id = ? ORDER BY book_name, chapter_name, created_at DESC',
     args: [userId]
   });
   return result.rows;
