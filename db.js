@@ -172,9 +172,9 @@ async function renameBank(bankId, userId, newName) {
 // ── Seed default question banks ──
 
 async function seedDefaultBanks() {
-  // Check if default banks already seeded
+  // Check if default banks already seeded (look for system-owned banks)
   const check = await db.execute({
-    sql: "SELECT COUNT(*) as cnt FROM question_banks WHERE user_id = 0",
+    sql: "SELECT COUNT(*) as cnt FROM question_banks WHERE name LIKE '档案事业概论%' OR name LIKE '档案工作实务%'",
     args: []
   });
   if (check.rows[0].cnt > 0) {
@@ -184,13 +184,14 @@ async function seedDefaultBanks() {
 
   console.log('[Seed] Importing default question banks...');
 
-  // Ensure system user exists (user_id = 0 for default banks)
-  try {
-    await db.execute({
-      sql: "INSERT OR IGNORE INTO users (id, email, password) VALUES (0, 'system@default', 'nologin')",
-      args: []
-    });
-  } catch(e) { /* already exists */ }
+  // Create or find system user for default banks
+  const bcrypt = require('bcryptjs');
+  let systemUser = await getUserByEmail('system@daqin.default');
+  if (!systemUser) {
+    const hashed = await bcrypt.hash('system-no-login-' + Date.now(), 10);
+    systemUser = await createUser('system@daqin.default', hashed);
+  }
+  const systemUserId = systemUser.id;
 
   let gailan, shiwu;
   try {
@@ -213,7 +214,7 @@ async function seedDefaultBanks() {
   for (const b of banks) {
     await db.execute({
       sql: 'INSERT INTO question_banks (user_id, name, book_name, chapter_name, questions, question_count, is_public) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      args: [0, b.name, b.book, b.chapter, JSON.stringify(b.questions), b.questions.length, 1]
+      args: [systemUserId, b.name, b.book, b.chapter, JSON.stringify(b.questions), b.questions.length, 1]
     });
     console.log(`[Seed] ✓ ${b.book} > ${b.chapter}: ${b.questions.length} questions`);
   }

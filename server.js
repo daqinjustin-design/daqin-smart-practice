@@ -60,7 +60,11 @@ app.get('*', (req, res) => {
 
 // Initialize database, seed defaults, then start server
 initDB().then(async () => {
-  await seedDefaultBanks();
+  try {
+    await seedDefaultBanks();
+  } catch(e) {
+    console.error('[Seed] Warning: failed to seed default banks:', e.message);
+  }
   app.listen(PORT, () => {
     console.log(`大钦智能刷题 v1.0 running on http://localhost:${PORT}`);
   });
