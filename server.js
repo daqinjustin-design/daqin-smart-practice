@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const { initDB } = require('./db');
+const { initDB, seedDefaultBanks } = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -58,8 +58,9 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'output', 'index.html'));
 });
 
-// Initialize database then start server
-initDB().then(() => {
+// Initialize database, seed defaults, then start server
+initDB().then(async () => {
+  await seedDefaultBanks();
   app.listen(PORT, () => {
     console.log(`大钦智能刷题 v1.0 running on http://localhost:${PORT}`);
   });

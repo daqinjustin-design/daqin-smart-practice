@@ -128,12 +128,13 @@ async function getUserBanks(userId) {
 }
 
 async function getPublicBanks(userId) {
-  // Get all public banks except the user's own
+  // Get all public banks except the user's own (include system banks with user_id=0)
   const result = await db.execute({
-    sql: `SELECT qb.id, qb.name, qb.question_count, qb.created_at, u.email as author_email
-          FROM question_banks qb JOIN users u ON qb.user_id = u.id
+    sql: `SELECT qb.id, qb.name, qb.book_name, qb.chapter_name, qb.question_count, qb.created_at,
+            CASE WHEN qb.user_id = 0 THEN '系统默认' ELSE COALESCE(u.email, '系统默认') END as author_email
+          FROM question_banks qb LEFT JOIN users u ON qb.user_id = u.id
           WHERE qb.is_public = 1 AND qb.user_id != ?
-          ORDER BY qb.created_at DESC`,
+          ORDER BY qb.book_name, qb.chapter_name, qb.created_at DESC`,
     args: [userId]
   });
   return result.rows;
@@ -168,8 +169,59 @@ async function renameBank(bankId, userId, newName) {
   });
 }
 
+// ── Seed default question banks ──
+
+async function seedDefaultBanks() {
+  // Check if default banks already seeded
+  const check = await db.execute({
+    sql: "SELECT COUNT(*) as cnt FROM question_banks WHERE user_id = 0",
+    args: []
+  });
+  if (check.rows[0].cnt > 0) {
+    console.log('[Seed] Default banks already exist, skipping.');
+    return;
+  }
+
+  console.log('[Seed] Importing default question banks...');
+
+  // Ensure system user exists (user_id = 0 for default banks)
+  try {
+    await db.execute({
+      sql: "INSERT OR IGNORE INTO users (id, email, password) VALUES (0, 'system@default', 'nologin')",
+      args: []
+    });
+  } catch(e) { /* already exists */ }
+
+  let gailan, shiwu;
+  try {
+    gailan = require('./questions-gailan.js');
+    shiwu = require('./questions-shiwu.js');
+  } catch(e) {
+    console.log('[Seed] Question files not found, skipping seed.');
+    return;
+  }
+
+  const banks = [
+    { book: '档案事业概论', chapter: '单选题', name: '档案事业概论-单选题', questions: gailan.gailan_danxuan },
+    { book: '档案事业概论', chapter: '多选题', name: '档案事业概论-多选题', questions: gailan.gailan_duoxuan },
+    { book: '档案事业概论', chapter: '判断题', name: '档案事业概论-判断题', questions: gailan.gailan_panduan },
+    { book: '档案工作实务', chapter: '单选题', name: '档案工作实务-单选题', questions: shiwu.shiwu_danxuan },
+    { book: '档案工作实务', chapter: '多选题', name: '档案工作实务-多选题', questions: shiwu.shiwu_duoxuan },
+    { book: '档案工作实务', chapter: '判断题', name: '档案工作实务-判断题', questions: shiwu.shiwu_panduan },
+  ];
+
+  for (const b of banks) {
+    await db.execute({
+      sql: 'INSERT INTO question_banks (user_id, name, book_name, chapter_name, questions, question_count, is_public) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      args: [0, b.name, b.book, b.chapter, JSON.stringify(b.questions), b.questions.length, 1]
+    });
+    console.log(`[Seed] ✓ ${b.book} > ${b.chapter}: ${b.questions.length} questions`);
+  }
+  console.log('[Seed] Default banks imported successfully.');
+}
+
 module.exports = {
-  db, initDB, ALLOWED_KEYS,
+  db, initDB, seedDefaultBanks, ALLOWED_KEYS,
   getUserByEmail, createUser, getUserById,
   getUserData, getAllUserData, setUserData, deleteAllUserData,
   createBank, getUserBanks, getPublicBanks, getBankById,
