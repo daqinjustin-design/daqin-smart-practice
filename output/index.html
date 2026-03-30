@@ -644,6 +644,8 @@ body::before {
   color: var(--yellow);
 }
 .btn-sm { padding: 8px 16px; font-size: 0.82rem; }
+.btn-accent { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-accent:hover { background: var(--accent-secondary); border-color: var(--accent-secondary); }
 
 /* === Results page === */
 .result-hero {
@@ -1095,6 +1097,7 @@ body::before {
 .bank-book-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   padding: 14px 18px;
   background: var(--bg-input);
@@ -3150,20 +3153,74 @@ async function renderPublicBanksTab() {
       content.innerHTML = '<div class="bank-empty">暂无公共题库，成为第一个分享者吧！</div>';
       return;
     }
-    content.innerHTML = '<div class="bank-list">' + banks.map(b => `
-      <div class="bank-item">
-        <div class="bank-item-info">
-          <div class="bank-item-name">${escapeHtml(b.name)}</div>
-          <div class="bank-item-meta">${b.question_count} 题 · ${b.author_email ? b.author_email.replace(/@.*/, '@***') : '匿名'} · ${b.created_at ? b.created_at.slice(0, 10) : ''}</div>
-        </div>
-        <div class="bank-item-actions">
-          <button class="bank-item-btn primary" data-bank-use-public="${b.id}">使用此题库</button>
-        </div>
-      </div>
-    `).join('') + '</div>';
 
+    // Group by book_name
+    const groups = {};
+    const ungrouped = [];
+    banks.forEach(b => {
+      if (b.book_name) {
+        if (!groups[b.book_name]) groups[b.book_name] = [];
+        groups[b.book_name].push(b);
+      } else {
+        ungrouped.push(b);
+      }
+    });
+
+    let html = '';
+    // Render grouped banks
+    for (const [bookName, bookBanks] of Object.entries(groups)) {
+      const totalQ = bookBanks.reduce((s, b) => s + b.question_count, 0);
+      const author = bookBanks[0].author_email ? bookBanks[0].author_email.replace(/@.*/, '@***') : '匿名';
+      html += `<div class="bank-book-group">
+        <div class="bank-book-header">
+          <div>
+            <span class="bank-book-title">📖 ${escapeHtml(bookName)}</span>
+            <span class="bank-book-meta">${totalQ} 题 · ${bookBanks.length} 个分类 · ${author}</span>
+          </div>
+          <button class="btn btn-sm btn-accent" data-use-all-public='${JSON.stringify(bookBanks.map(b=>b.id))}'>使用整本题库</button>
+        </div>`;
+      bookBanks.forEach(b => {
+        html += `<div class="bank-item" style="margin-left:16px">
+          <div class="bank-item-info">
+            <div class="bank-item-name">${escapeHtml(b.chapter_name || b.name)}</div>
+            <div class="bank-item-meta">${b.question_count} 题 · ${b.created_at ? b.created_at.slice(0, 10) : ''}</div>
+          </div>
+          <div class="bank-item-actions">
+            <button class="bank-item-btn primary" data-bank-use-public="${b.id}">使用此题库</button>
+          </div>
+        </div>`;
+      });
+      html += '</div>';
+    }
+
+    // Render ungrouped banks
+    if (ungrouped.length > 0) {
+      html += '<div class="bank-list">' + ungrouped.map(b => `
+        <div class="bank-item">
+          <div class="bank-item-info">
+            <div class="bank-item-name">${escapeHtml(b.name)}</div>
+            <div class="bank-item-meta">${b.question_count} 题 · ${b.author_email ? b.author_email.replace(/@.*/, '@***') : '匿名'} · ${b.created_at ? b.created_at.slice(0, 10) : ''}</div>
+          </div>
+          <div class="bank-item-actions">
+            <button class="bank-item-btn primary" data-bank-use-public="${b.id}">使用此题库</button>
+          </div>
+        </div>
+      `).join('') + '</div>';
+    }
+
+    content.innerHTML = html;
+
+    // Single bank buttons
     content.querySelectorAll('[data-bank-use-public]').forEach(btn => {
       btn.addEventListener('click', () => useBankById(Number(btn.dataset.bankUsePublic)));
+    });
+
+    // "Use all" book buttons
+    content.querySelectorAll('[data-use-all-public]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const ids = JSON.parse(btn.dataset.useAllPublic);
+        useMultipleBanksById(ids);
+      });
     });
   } catch(err) {
     content.innerHTML = '<div class="bank-empty">获取公共题库失败</div>';
@@ -3180,6 +3237,24 @@ async function useBankById(bankId) {
     // Convert to chapter format
     const bankData = { chapters: [{ name: data.name, questions: data.questions }] };
     loadBank(bankData);
+  } catch(err) {
+    showToast('加载失败：' + (err.message || '未知错误'));
+  }
+}
+
+async function useMultipleBanksById(bankIds) {
+  try {
+    showToast('加载题库…');
+    const chapters = [];
+    for (const id of bankIds) {
+      const data = await apiCall('GET', '/api/banks/' + id);
+      if (data.questions && data.questions.length > 0) {
+        const chName = [data.chapter_name, data.name].filter(x => x).join(' - ') || data.name;
+        chapters.push({ name: chName, questions: data.questions });
+      }
+    }
+    if (chapters.length === 0) { showToast('题库为空'); return; }
+    loadBank({ chapters });
   } catch(err) {
     showToast('加载失败：' + (err.message || '未知错误'));
   }
